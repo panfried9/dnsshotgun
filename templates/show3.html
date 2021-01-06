@@ -1,0 +1,63 @@
+{% extends "layout.html" %}
+
+{% block content %}
+
+<div content>
+
+<div class="container">
+
+<div class="row">
+  <div class="col">
+
+  <div class="card">
+      <div class="card-body">
+      <h5 class="card-title">Dig Online</h5>
+      <form method="post" action=" {{ url_for('dig') }} ">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/> 
+      <table><tr><td> 
+      {{ form.hostname.label }}
+      </td><td>{{ form.hostname }}</td></tr>
+      <tr><td>{{ form.qtype.label }}</td>
+      <td>{{ form.qtype }}</td></tr>
+      <tr><td>{{ form.authdig.label }}</td>
+      <td>{{ form.authdig }}</td></tr>
+      <tr><td>{{ form.dnssecdig.label }}</td>
+      <td>{{ form.dnssecdig }}</td></tr>
+      <tr><td>{{ form.compare.label }}</td>
+      <td>{{ form.compare }}</td></tr> 
+      <tr><td>{{ form.proto.label }}</td>
+      <td>{{ form.proto }}</td></tr>
+
+      <tr><td> 
+      <input class="btn btn-primary" type="submit" value="DIG">
+      </td></tr></table>
+
+      </form>
+     </div><!-- card body --> 
+    </div><!-- card -->
+
+
+   {% for res in providers %}
+    <div class="card {% if matches(resarray[loop.index0],winner) or compare == False %}border-dark{% else %}border-danger{% endif %} mb-3 mr-1">
+      <div class='card header'><table align='center' ><tr> 
+      {% if name2logo( res[1] )[0] != "" %}<td><img src="/static/{{ name2logo( res[1] )[0] }}" width="32" height="32" alt="{{ name2logo( res[1] )[1] }}" title="{{ name2logo(res[1] )[1] }}"></td> 
+      {% endif %}
+      <td>{{ res[1] }}</td>
+      </table>  
+      </div> 
+      <div class="card-body">
+      <h5 class="card-title"> server: {{ res[0] }}  type: {{ res[2] }} </h5>
+     
+        <p class="card-text"><pre>
+{{ resarray[loop.index0] }}  
+      </pre>
+      </div>
+    </div>
+   {% endfor %}
+
+  </div>
+</div>
+</div>
+</div>
+
+{% endblock %}
