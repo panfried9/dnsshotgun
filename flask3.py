@@ -14,7 +14,7 @@ from flask_wtf.csrf import CSRFProtect
 csrf = CSRFProtect()  
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'I8UUYNhHJHYuuad7^%%dad(0('
+app.config['SECRET_KEY'] = 'INSERT RANDOM STRING HERE'
 csrf.init_app(app)
 
 
