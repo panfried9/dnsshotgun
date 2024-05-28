@@ -12,25 +12,55 @@
   <div class="card">
       <div class="card-body">
       <h5 class="card-title">Dig Online</h5>
+      {% if error %}
+        <div class="alert alert-primary" role="alert">
+        {{ error }}
+        </div> 
+      {% endif %}    
+
+      {% for field, errors in form.errors.items() %}
+      <div class="alert alert-primary" role="alert">
+         {{ form[field].label }}: {{ errors[0] }}
+      </div>
+      {% endfor %} 
+
+
+
       <form method="post" action=" {{ url_for('dig') }} ">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/> 
-      <table><tr><td> 
+     
+      <p>
       {{ form.hostname.label }}
-      </td><td>{{ form.hostname }}</td></tr>
-      <tr><td>{{ form.qtype.label }}</td>
-      <td>{{ form.qtype }}</td></tr>
-      <tr><td>{{ form.authdig.label }}</td>
-      <td>{{ form.authdig }}</td></tr>
-      <tr><td>{{ form.dnssecdig.label }}</td>
-      <td>{{ form.dnssecdig }}</td></tr>
-      <tr><td>{{ form.compare.label }}</td>
-      <td>{{ form.compare }}</td></tr> 
-      <tr><td>{{ form.proto.label }}</td>
-      <td>{{ form.proto }}</td></tr>
+      {{ form.hostname }}
+      {{ form.qtype.label }}
+      {{ form.qtype }}
+      </p>
+      <p>
+       <a class="btn btn-primary" data-bs-toggle="collapse" href="#collapseAdvanced" role="button" aria-expanded="false" aria-controls="collapseAdvanced">
+          Advanced
+        </a>
+      </p>
+      <div class="collapse" id="collapseAdvanced">
+      
+         <p>
+         {{ form.authdig.label }}
+         {{ form.authdig }}
+         </p><p>
+         {{ form.dnssecdig.label }}
+         {{ form.dnssecdig }}
+         </p><p>
+         {{ form.compare.label }}
+         {{ form.compare }}
+         </p><p>
+         {{ form.proto.label }}
+         {{ form.proto }}
+         </p>
+         
+       </div>
 
-      <tr><td> 
+      <p>
       <input class="btn btn-primary" type="submit" value="DIG">
-      </td></tr></table>
+      </p>
 
       </form>
      </div><!-- card body --> 

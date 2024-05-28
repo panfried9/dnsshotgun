@@ -7,7 +7,7 @@ from multiprocessing.pool import ThreadPool
 from flask import Flask, render_template
 from flask_wtf import FlaskForm
 from wtforms import BooleanField, StringField, SelectField, SubmitField 
-from wtforms.validators import DataRequired
+from wtforms.validators import DataRequired, ValidationError
 from flask_wtf.csrf import CSRFProtect
 
 
@@ -17,9 +17,17 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'INSERT RANDOM STRING HERE'
 csrf.init_app(app)
 
+def valid_domain(form, field):
+   # from_text is going to raise an exception if this is not a valid hostname 
+   try:
+      dns.name.from_text(form.hostname.data)
+   except:
+      print("in except")
+      raise ValidationError('Input is not a valid domain')
+
 
 class DigForm(FlaskForm):
-    hostname = StringField('Hostname', validators=[DataRequired()])
+    hostname = StringField('Hostname', validators=[DataRequired(), valid_domain])
     qtype = SelectField('Type', choices=[ ('A','A'),('AAAA','AAAA'),('ANY','ANY'), ('CNAME','CNAME'), ('DNAME','DNAME'), 
                         ('DNSKEY','DNSKEY'), ('DS','DS'), ('NAPTR','NAPTR'), ('NSEC','NSEC'), ('NSEC3','NSEC3'), ('PTR','PTR'), 
                         ('RRSIG','RRSIG'), ('TXT','TXT'), 
@@ -64,7 +72,7 @@ def name2logo(n):
 
 
 def query_server(args):
-  to = 2
+  to = 2 # Timeout
 
   domain = args[3]
   type = args[4]
@@ -79,7 +87,7 @@ def query_server(args):
      a = dns.query.tcp(q, server, timeout=to ) 
    else: 
      a = dns.query.udp(q, server, timeout=to ) 
-  # FIXME we should dig deeper into what error is coming back, for now just put none
+  # FIXME we should dig deeper into what error is coming back
   except: 
      print("error came back")
      a = None
@@ -99,6 +107,9 @@ def matches(left, right):
     return 0
   return 1 
 
+####################################################################################
+# Find the most popular answer so that we can highlight answers that are different #
+####################################################################################
 def findwinner( results ):
   j = 0
   counter = 0  
@@ -114,6 +125,9 @@ def findwinner( results ):
     j += 1 
   return winner       
 
+###############################################################################################
+# Find authoritative servers so that we can add them to the the list of servers to be queried #
+###############################################################################################
 def find_auth(domain):
     return_providers = [] 
     auth = query_server(["8.8.8.8","authcheck","Recurse", domain, "NS", "UDPFB" , False])
@@ -134,8 +148,6 @@ def find_auth(domain):
       return return_providers
 
 
-
-
 @app.route('/dig', methods=('GET', 'POST'))
 def dig():
   form = DigForm() 
@@ -143,9 +155,15 @@ def dig():
   providers = []
   compare = False 
   winner =  [] 
+  error = ""
   if form.validate_on_submit():
     compare = form.compare.data
-    domain = dns.name.from_text(form.hostname.data)
+    
+    try:
+       domain = dns.name.from_text(form.hostname.data)
+    except:
+       return render_template("show3.html", form=form, resarray=resarray, providers=providers, compare = compare, name2logo=name2logo, matches=matches, winner=winner,error="invalid domain name")
+ 
     type =  dns.rdatatype.from_text(form.qtype.data)
     proto = form.proto.data
     dnssec = form.dnssecdig.data
@@ -162,16 +180,15 @@ def dig():
     # this section is for the auth checking 
     if form.authdig.data == True: 
       auths = find_auth( domain)
-      # If empty, then check parent
+      # If empty, then check parent (for example somebody submits www.google.com, then we check google.com)
       if auths == [] :
         auths = find_auth( domain.parent())
-        for auth in auths:
-           providers.append([ auth[0], auth[1], "Auth", domain, type, proto, dnssec ] )
-   
+      for auth in auths:
+        providers.append([ auth[0], auth[1], "Auth", domain, type, proto, dnssec ] )
 
     with ThreadPool(5) as p:
       resarray = p.map(query_server, providers)
     winnerpos = findwinner( resarray )
     winner = resarray[winnerpos]  
-    print("most hit is position:" + str( findwinner( resarray) ))  
-  return render_template("show3.html", form=form, resarray=resarray, providers=providers, compare = compare, name2logo=name2logo, matches=matches, winner=winner)
+    #print("most hit is position:" + str( findwinner( resarray) ))  
+  return render_template("show3.html", form=form, resarray=resarray, providers=providers, compare = compare, name2logo=name2logo, matches=matches, winner=winner, error=error)
