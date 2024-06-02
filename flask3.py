@@ -35,7 +35,8 @@ class DigForm(FlaskForm):
     authdig   = BooleanField('Query Authoritative Servers')
     dnssecdig = BooleanField('Request DNSSEC') 
     compare   = BooleanField('Red border on results that are different from majority', default=True) 
-    proto   = SelectField('Protocol', choices=[ ('UDPFB', 'UDP with TCP fallback'), ('TCP','TCP'), ('UDP','UDP') ] ) 
+    proto     = SelectField('Protocol', choices=[ ('TCP','TCP') ] )  
+    #proto   = SelectField('Protocol', choices=[ ('UDPFB', 'UDP with TCP fallback'), ('TCP','TCP'), ('UDP','UDP') ] ) 
 
 def name2logo(n):
 ###########################################
@@ -88,10 +89,9 @@ def query_server(args):
    else: 
      a = dns.query.udp(q, server, timeout=to ) 
   # FIXME we should dig deeper into what error is coming back
-  except: 
-     print("error came back")
+  except Exception as e: 
+     print("error came back ", e)
      a = None
-
   return a
 
 def matches(left, right):
@@ -129,15 +129,17 @@ def findwinner( results ):
 # Find authoritative servers so that we can add them to the the list of servers to be queried #
 ###############################################################################################
 def find_auth(domain):
-    return_providers = [] 
-    auth = query_server(["8.8.8.8","authcheck","Recurse", domain, "NS", "UDPFB" , False])
+    return_providers = []
+    aproto = "TCP" # protocol to use when finding authoritative servers can be "UDPFB"   
+    auth = query_server(["8.8.8.8","authcheck","Recurse", domain, "NS", aproto , False])
+    print("AUTH: ", auth) 
     if auth != None:
       for rdata in auth.answer:
        for r in rdata:
          # make sure this is an NS record, if not check the next
          if( r.rdtype != dns.rdatatype.from_text("NS")) :
            continue
-         autha = query_server(["8.8.8.8","google","Recurse", r.target, "A", "UDPFB", False] )
+         autha = query_server(["8.8.8.8","google","Recurse", r.target, "A", aproto, False] )
          if autha != None: 
            for ra in autha.answer[0]:
              # make sure we got an A record back, not CNAME
@@ -183,8 +185,12 @@ def dig():
       # If empty, then check parent (for example somebody submits www.google.com, then we check google.com)
       if auths == [] :
         auths = find_auth( domain.parent())
-      for auth in auths:
-        providers.append([ auth[0], auth[1], "Auth", domain, type, proto, dnssec ] )
+      # If still empty then just skip the auth addition
+      try: 
+         for auth in auths:
+            providers.append([ auth[0], auth[1], "Auth", domain, type, proto, dnssec ] )
+      except:
+         pass
 
     with ThreadPool(5) as p:
       resarray = p.map(query_server, providers)
